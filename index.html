@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exim Tours - Punkt Zbiórki</title>
+    <style>
+        /* STYL KORPORACYJNY EXIM TOURS */
+        body { 
+            font-family: Arial, Helvetica, sans-serif; 
+            max-width: 480px; 
+            margin: 0 auto; 
+            padding: 15px; 
+            background-color: #f5f5f5; 
+            color: #333; 
+        }
+        
+        .card { 
+            background: white; 
+            padding: 30px 20px; 
+            border-top: 6px solid #c20059; /* Kolor Exim Tours */
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
+        }
+
+        .logo-container {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .logo-container img {
+            max-width: 180px;
+            height: auto;
+        }
+        
+        h1 { 
+            font-size: 1.2rem; 
+            margin-top: 0; 
+            text-align: center; 
+            color: #333; 
+            font-weight: bold; 
+            text-transform: uppercase; 
+            letter-spacing: 1px;
+            margin-bottom: 25px;
+        }
+        
+        label { 
+            display: block; 
+            font-weight: bold; 
+            margin: 20px 0 5px; 
+            font-size: 0.8rem; 
+            color: #666; 
+            text-transform: uppercase; 
+        }
+
+        /* KWADRATOWE ELEMENTY BEZ ZAOKRĄGLEŃ (border-radius: 0) */
+        select, button { 
+            width: 100%; 
+            height: 50px; 
+            padding: 10px 15px; 
+            font-size: 16px; 
+            border-radius: 0; 
+            border: 1px solid #ccc; 
+            background: #fff; 
+            color: #000; 
+            box-sizing: border-box; 
+        }
+        
+        button { 
+            background-color: #c20059; /* Kolor Exim Tours */
+            color: white; 
+            font-weight: bold; 
+            margin-top: 25px; 
+            border: none; 
+            cursor: pointer; 
+            text-transform: uppercase;
+            font-size: 1rem;
+            transition: background 0.2s;
+        }
+        
+        button:active { background-color: #9e0048; }
+        
+        #resultArea { 
+            margin-top: 30px; 
+            display: none; 
+        }
+        
+        .result-box { 
+            border: 2px solid #c20059; 
+            padding: 20px; 
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        
+        .stop-info { 
+            font-size: 1.3rem; 
+            font-weight: bold; 
+            color: #c20059; 
+            margin-bottom: 10px; 
+            text-transform: uppercase; 
+        }
+        
+        .time-badge { 
+            font-size: 1.1rem; 
+            font-weight: bold; 
+            color: #333; 
+        }
+        
+        .nav-btn { 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            background: #222; 
+            color: white; 
+            min-height: 55px; 
+            padding: 10px; 
+            text-decoration: none; 
+            border-radius: 0; 
+            font-weight: bold; 
+            font-size: 1rem; 
+            margin-bottom: 20px; 
+            text-align: center;
+            text-transform: uppercase;
+            transition: background 0.2s;
+        }
+
+        .nav-btn:active { background: #000; }
+
+        .tip-box { 
+            font-size: 0.85rem; 
+            background: #f9f9f9; 
+            color: #555; 
+            padding: 12px; 
+            text-align: center;
+            font-weight: normal; 
+            margin-bottom: 20px; 
+            border-left: 4px solid #c20059;
+        }
+
+        .map-container { 
+            width: 100%; 
+            height: 430px; 
+            border: 1px solid #ccc; 
+            background: #eee; 
+        }
+        
+        .map-container iframe { 
+            width: 100%; 
+            height: 100%; 
+            border: none; 
+        }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    
+    <!-- MIEJSCE NA LOGO FIRMY -->
+    <div class="logo-container">
+        <img src="logo.png" alt="Exim Tours">
+    </div>
+
+    <h1>Trasa na punkt zbiórki</h1>
+
+    <label for="hotelSelect">1. Wybierz swój hotel</label>
+    <select id="hotelSelect" onchange="handleHotelChange()">
+        <option value="" disabled selected>-- Wybierz z listy --</option>
+    </select>
+
+    <label for="tripSelect">2. Wybierz wycieczkę</label>
+    <select id="tripSelect" disabled>
+        <option value="" disabled selected>-- Najpierw wybierz hotel --</option>
+    </select>
+
+    <button onclick="generateRoute()">Generuj Trasę</button>
+
+    <div id="resultArea">
+        
+        <div class="result-box">
+            <div class="stop-info" id="stopTitle"></div>
+            <div class="time-badge" id="pickupTimeDisplay"></div>
+        </div>
+
+        <a id="googleMapsLink" href="#" target="_blank" class="nav-btn">Otwórz Nawigację GPS</a>
+
+        <div class="tip-box" id="screenTip">Zalecamy zrobienie zrzutu ekranu</div>
+
+        <div class="map-container" id="mapBox"></div>
+
+    </div>
+</div>
+
+<script>
+    // =========================================================================
+    // BAZA PRZYSTANKÓW (Łatwa edycja współrzędnych)
+    // =========================================================================
+    const BazaPrzystankow = {
+        "ARDA":        { nazwa: "Arda", poludnie: "42.68497801525092,27.70557991049602", polnoc: "42.68472098253538,27.70565128452729" },
+        "CONTINENTAL": { nazwa: "Continental", poludnie: "42.68036244927027,27.705689534805963", polnoc: "42.68069627177183,27.705746446396585" },
+        "EFIR":        { nazwaPoludnie: "Efir", nazwaPolnoc: "Emona", poludnie: "42.70724198628952,27.72094868122376", polnoc: "42.707766507034414,27.72208526729404" },
+        "EMONA":       { nazwaPoludnie: "Efir", nazwaPolnoc: "Emona", poludnie: "42.70724198628952,27.72094868122376", polnoc: "42.707766507034414,27.72208526729404" },
+        "FAVORIT":     { nazwa: "Favorit", poludnie: "42.674299261879206,27.70655871773909", polnoc: "42.67461444449579,27.70668213104996" },
+        "HELENA":      { nazwa: "Helena", poludnie: null, polnoc: null },
+        "KUBAN":       { nazwa: "Palma (Kuban)", poludnie: "42.695266235740014,27.710139103411343", polnoc: "42.69617562393992,27.71084374753181" },
+        "PALMA":       { nazwa: "Palma (Kuban)", poludnie: "42.695266235740014,27.710139103411343", polnoc: "42.69617562393992,27.71084374753181" },
+        "OPAL":        { nazwa: "Opal", poludnie: "42.69931518549194,27.712432544014696", polnoc: "42.69967055672909,27.71284141474883" },
+        "ORANGE":      { nazwa: "Orange", poludnie: "42.704107141925476,27.716463414020684", polnoc: "42.704198249548234,27.716715484835174" },
+        "STADION":     { nazwa: "Stadion", poludnie: "42.66731860128048,27.7068141102552", polnoc: "42.667330404114864,27.706966243291223" },
+        "SVEJEST":     { nazwa: "Svejest", poludnie: "42.69229436230523,27.708421483813545", polnoc: "42.6910531758355,27.707886220273902" },
+        "ZORA":        { nazwa: "Zora", poludnie: null, polnoc: null }
+    };
+
+    // =========================================================================
+    // BAZA WYCIECZEK (Łatwa edycja godzin i kierunków)
+    // =========================================================================
+    const BazaWycieczek = {
+        "sozopol":              { label: "Sozopol autokarem", kierunek: "POLUDNIE", godzina: "08:10" },
+        "trabi":                { label: "Go trabi Go (zbiórka przed recepcją)", kierunek: "RECEPCJA", godzina: "09:00" },
+        "leniwy":               { label: "Leniwy statek", kierunek: "POLUDNIE", godzina: "09:00" },
+        "yacht":                { label: "Yacht Piknik", kierunek: "RECEPCJA", godzina: "09:00" },
+        "piracki":              { label: "Piracki statek", kierunek: "POLUDNIE", godzina: "09:00" },
+        "catamaran_rano":       { label: "Catamaran (rano)", kierunek: "POLUDNIE", godzina: "08:30" },
+        "catamaran_popoludnie": { label: "Catamaran (popołudnie)", kierunek: "POLUDNIE", godzina: "13:30" },
+        "catamaran_zachod":     { label: "Catamaran (zachód słońca)", kierunek: "POLUDNIE", godzina: "18:00" },
+        "istambul":             { label: "Istambuł 1-dniowy", kierunek: "POLUDNIE", godzina: "21:30" },
+        "safari":               { label: "Godzilla JEEP SAFARI (zbiórka przed recepcją)", kierunek: "RECEPCJA", godzina: "08:45" },
+        "nessebar":             { label: "Nessebar", kierunek: "POLUDNIE", godzina: "09:30" },
+        "wieczor":              { label: "Wieczór bułgarski", kierunek: "POLUDNIE", godzina: "18:00" },
+        "balchik":              { label: "Balchik Kaliakra", kierunek: "POLNOC", godzina: "08:00" },
+        "warna":                { label: "Warna", kierunek: "POLNOC", godzina: "08:00" }
+    };
+
+    // =========================================================================
+    // BAZA HOTELI (Aby zmienić przystanek, edytuj wartość po słowie 'przystanek:')
+    // =========================================================================
+    const database = {
+        "alba": { hotelName: "ALBA", hotelCoords: "42.69399486990588,27.711910635582246", przystanek: "KUBAN" },
+        "aluasoul": { hotelName: "ALUASOUL SUNNY BEACH", hotelCoords: "42.69026201827372,27.71209740674674", przystanek: "SVEJEST" },
+        "aqua_nevis": { hotelName: "AQUA NEVIS", hotelCoords: "42.70002862716276,27.705072184657837", przystanek: "OPAL" },
+        "aquamarine": { hotelName: "AQUAMARINE", hotelCoords: "42.67928279563764,27.70576948171523", przystanek: "CONTINENTAL" },
+        "asteria": { hotelName: "ASTERIA FAMILY SUNNY BEACH", hotelCoords: "42.696173809131686,27.71293862404482", przystanek: "KUBAN" },
+        "astoria": { hotelName: "ASTORIA", hotelCoords: "42.69750634677237,27.71536334076184", przystanek: "KUBAN" },
+        "avliga": { hotelName: "AVLIGA", hotelCoords: "42.69869463570257,27.715524239387", przystanek: "OPAL" },
+        "azurro": { hotelName: "AZURRO", hotelCoords: "42.68400338121199,27.7093276308874", przystanek: "ARDA" },
+        "baikal": { hotelName: "BAIKAL", hotelCoords: "42.6861834025801,27.707952652651876", przystanek: "ARDA" },
+        "barcelo": { hotelName: "BARCELO ROYAL BEACH", hotelCoords: "42.69807316635159,27.713946352880356", przystanek: "OPAL" },
+        "belleville": { hotelName: "BELLEVILLE SUNNY BEACH", hotelCoords: "42.674268511406396,27.70651422589263", przystanek: "FAVORIT" },
+        "bellevue": { hotelName: "BELLEVUE", hotelCoords: "42.70637160553007,27.723540587963534", przystanek: "EFIR" },
+        "best_western": { hotelName: "BEST WESTERN", hotelCoords: "42.69216088539537,27.70921483938686", przystanek: "SVEJEST" },
+        "blue_pearl": { hotelName: "BLUE PEARL", hotelCoords: "42.688670019612516,27.713001968222095", przystanek: "SVEJEST" },
+        "bohemi": { hotelName: "BOHEMI", hotelCoords: "42.68722928958418,27.70515743938649", przystanek: "ARDA" },
+        "boomerang": { hotelName: "BOOMERANG", hotelCoords: "42.691631336867516,27.705501498399467", przystanek: "SVEJEST" },
+        "bor": { hotelName: "BOR", hotelCoords: "42.693142301572074,27.71119960966005", przystanek: "SVEJEST" },
+        "briz": { hotelName: "BRIZ BEACH", hotelCoords: "42.70021000332572,27.71799294134609", przystanek: "OPAL" },
+        "burgas_beach": { hotelName: "BURGAS BEACH", hotelCoords: "42.6819542936025,27.710749568221853", przystanek: "CONTINENTAL" },
+        "calypso": { hotelName: "CALYPSO", hotelCoords: "42.67197585457835,27.706328183563645", przystanek: "FAVORIT" },
+        "carolina": { hotelName: "CAROLINA", hotelCoords: "42.668083337664136,27.707943054727902", przystanek: "STADION" },
+        "chrisantema": { hotelName: "CHRISANTEMA", hotelCoords: "42.68895841589665,27.707609568222193", przystanek: "SVEJEST" },
+        "condor": { hotelName: "CONDOR", hotelCoords: "42.70692465848214,27.723396797058438", przystanek: "EFIR" },
+        "cooks_club": { hotelName: "COOK'S CLUB SUNNY BEACH", hotelCoords: "42.66988789837391,27.70806927589251", przystanek: "STADION" },
+        "das_club": { hotelName: "DAS CLUB HOTEL SUNNY BEACH", hotelCoords: "42.700509505937795,27.71414357612645", przystanek: "ORANGE" },
+        "diamant": { hotelName: "DIAMANT RESIDENCE", hotelCoords: "42.66843501510894,27.706440881714745", przystanek: "STADION" },
+        "diamond": { hotelName: "DIAMOND", hotelCoords: "42.69654722689324,27.71050020811724", przystanek: "KUBAN" },
+        "dunav": { hotelName: "DUNAV", hotelCoords: "42.68394021844546,27.70679022589307", przystanek: "ARDA" },
+        "europa": { hotelName: "EUROPA", hotelCoords: null, przystanek: "KUBAN" },
+        "evrika": { hotelName: "EVRIKA BEACH", hotelCoords: "42.706088307194655,27.72046262404527", przystanek: "EFIR" },
+        "fenix": { hotelName: "FENIX", hotelCoords: "42.68757060189158,27.710052035232014", przystanek: "ARDA" },
+        "flora": { hotelName: "FLORA PARK", hotelCoords: "42.69069506313385,27.707073240332367", przystanek: "SVEJEST" },
+        "galeon": { hotelName: "GALEON", hotelCoords: "42.67040233499396,27.707365265508468", przystanek: "STADION" },
+        "glarus": { hotelName: "GLARUS BEACH", hotelCoords: "42.70087014853996,27.718382252880435", przystanek: "ORANGE" },
+        "globus": { hotelName: "GLOBUS", hotelCoords: "42.696493522516015,27.71429686082735", przystanek: "KUBAN" },
+        "grand_hotel": { hotelName: "GRAND HOTEL SUNNY BEACH", hotelCoords: "42.69795074124634,27.715500910551448", przystanek: "OPAL" },
+        "grand_victoria": { hotelName: "GRAND VICTORIA", hotelCoords: "42.70008282547466,27.717494452880423", przystanek: "OPAL" },
+        "helena_park": { hotelName: "HELENA PARK", hotelCoords: "42.70998000688915,27.72820296849899", przystanek: "HELENA" },
+        "helena_sands": { hotelName: "HELENA SANDS", hotelCoords: "42.70886845675375,27.728301410551797", przystanek: "HELENA" },
+        "ihotel": { hotelName: "IHOTEL", hotelCoords: "42.70399323971126,27.719577612400446", przystanek: "ORANGE" },
+        "imperial_palace": { hotelName: "IMPERIAL PALACE", hotelCoords: "42.70724989046628,27.724676681716325", przystanek: "EFIR" },
+        "imperial_resort": { hotelName: "IMPERIAL RESORT", hotelCoords: null, przystanek: "STADION" },
+        "iskar": { hotelName: "ISKAR", hotelCoords: "42.68801236578375,27.70903919705774", przystanek: "ARDA" },
+        "isola": { hotelName: "ISOLA PARADISE", hotelCoords: "42.69833987116778,27.70931671055151", przystanek: "OPAL" },
+        "ivana": { hotelName: "IVANA PALACE", hotelCoords: "42.70788159006516,27.71936481240064", przystanek: "EFIR" },
+        "jupiter": { hotelName: "JUPITER", hotelCoords: "42.6974618800249,27.712388966649684", przystanek: "KUBAN" },
+        "kalina": { hotelName: "KALINA GARDEN", hotelCoords: "42.69284822527045,27.71023609498273", przystanek: "SVEJEST" },
+        "karlovo": { hotelName: "KARLOVO", hotelCoords: "42.700267479650165,27.713650525893623", przystanek: "OPAL" },
+        "kavkaz": { hotelName: "KAVKAZ GOLDEN DUNE", hotelCoords: "42.6798298331906,27.707021724044143", przystanek: "CONTINENTAL" },
+        "kotva": { hotelName: "KOTVA", hotelCoords: "42.66685222807418,27.708309010550217", przystanek: "STADION" },
+        "kuban": { hotelName: "KUBAN RESORT & AQUA PARK", hotelCoords: "42.694589,27.711479", przystanek: "KUBAN" },
+        "lb_hotel": { hotelName: "L&B HOTEL", hotelCoords: "42.69906106547324,27.709887139387018", przystanek: "OPAL" },
+        "laguna": { hotelName: "LAGUNA PARK", hotelCoords: "42.69037478925596,27.709558054728888", przystanek: "SVEJEST" },
+        "lion": { hotelName: "LION SUNNY BEACH", hotelCoords: "42.70439735538752,27.715276783564935", przystanek: "ORANGE" },
+        "longoza": { hotelName: "LONGOZA", hotelCoords: "42.678953208432965,27.707117912399582", przystanek: "CONTINENTAL" },
+        "magnolia": { hotelName: "MAGNOLIA", hotelCoords: "42.694896609332105,27.70794272270351", przystanek: "KUBAN" },
+        "majestic": { hotelName: "MAJESTIC", hotelCoords: "42.70890291235526,27.724681474171145", przystanek: "HELENA" },
+        "maria_palace": { hotelName: "MARIA PALACE", hotelCoords: "42.68562859080364,27.704202024044363", przystanek: "ARDA" },
+        "marvel": { hotelName: "MARVEL", hotelCoords: "42.708179372448285,27.723968199077856", przystanek: "EFIR" },
+        "melia": { hotelName: "MELIA SUNNY BEACH", hotelCoords: "42.69152751459181,27.71187653938672", przystanek: "SVEJEST" },
+        "mena": { hotelName: "MENA PALACE", hotelCoords: "42.68903678820714,27.708628710551057", przystanek: "SVEJEST" },
+        "meridian": { hotelName: "MERIDIAN", hotelCoords: "42.6845508313922,27.70743141055101", przystanek: "ARDA" },
+        "nessebar_beach": { hotelName: "NESSEBAR BEACH", hotelCoords: "42.682452484500395,27.709165925296322", przystanek: "CONTINENTAL" },
+        "nobel": { hotelName: "NOBEL", hotelCoords: "42.67093892504788,27.70742986822143", przystanek: "FAVORIT" },
+        "orel": { hotelName: "OREL", hotelCoords: "42.69712717116794,27.715209412400142", przystanek: "KUBAN" },
+        "continental": { hotelName: "PARKHOTEL CONTINENTAL", hotelCoords: "42.68154801237402,27.70595247412699", przystanek: "CONTINENTAL" },
+        "perla": { hotelName: "PERLA", hotelCoords: "42.69978105760958,27.713519266149174", przystanek: "OPAL" },
+        "regatta": { hotelName: "REGATTA PALACE", hotelCoords: "42.67452025918307,27.70636701055048", przystanek: "FAVORIT" },
+        "riu_helios": { hotelName: "RIU HELIOS", hotelCoords: null, przystanek: "KUBAN" },
+        "riva": { hotelName: "RIVA", hotelCoords: "42.703032108183024,27.71591005669628", przystanek: "ORANGE" },
+        "rodopi": { hotelName: "RODOPI", hotelCoords: "42.700216947427705,27.714322525893675", przystanek: "OPAL" },
+        "rome": { hotelName: "ROME DELUXE", hotelCoords: "42.67898482096212,27.706122968221653", przystanek: "CONTINENTAL" },
+        "royal_central": { hotelName: "ROYAL CENTRAL", hotelCoords: "42.69812265133136,27.71033988171585", przystanek: "OPAL" },
+        "sea_breeze": { hotelName: "SEA BREEZE", hotelCoords: "42.68404428436551,27.70331383938647", przystanek: "ARDA" },
+        "neptun": { hotelName: "SENTIDO NEPTUN BEACH", hotelCoords: "42.691777614464634,27.71301829705787", przystanek: "SVEJEST" },
+        "slavyanski": { hotelName: "SLAVYANSKI", hotelCoords: "42.70647056268392,27.722612549183104", przystanek: "EFIR" },
+        "sun_palace": { hotelName: "SUN PALACE", hotelCoords: "42.696077597561015,27.711302339386922", przystanek: "KUBAN" },
+        "sunny_day_club": { hotelName: "SUNNY DAY CLUB", hotelCoords: "42.70749011969098,27.721248010551783", przystanek: "EFIR" },
+        "tarsis": { hotelName: "TARSIS", hotelCoords: "42.68189230994238,27.701648554728457", przystanek: "CONTINENTAL" },
+        "tiara_beach": { hotelName: "TIARA BEACH", hotelCoords: "42.68191115824429,27.707892339386316", przystanek: "CONTINENTAL" },
+        "trakia": { hotelName: "TRAKIA", hotelCoords: null, przystanek: "ARDA" },
+        "trakia_plaza": { hotelName: "TRAKIA PLAZA", hotelCoords: "42.687771417835435,27.707241331439494", przystanek: "ARDA" },
+        "viand": { hotelName: "VIAND", hotelCoords: "42.68841651617203,27.712246324044415", przystanek: "ARDA" },
+        "wela": { hotelName: "WELA", hotelCoords: "42.70543588257759,27.71769799705836", przystanek: "EFIR" },
+        "yavor_palace": { hotelName: "YAVOR PALACE", hotelCoords: "42.693586928806624,27.710175379867014", przystanek: "SVEJEST" },
+        "zefir_beach": { hotelName: "ZEFIR BEACH", hotelCoords: "42.6674494268195,27.710012983563594", przystanek: "STADION" },
+        "zvete": { hotelName: "ZVETE", hotelCoords: null, przystanek: "SVEJEST" }
+    };
+
+    // =========================================================================
+    // LOGIKA APLIKACJI
+    // =========================================================================
+    const hotelSelect = document.getElementById("hotelSelect");
+    const tripSelect = document.getElementById("tripSelect");
+
+    Object.keys(database)
+        .sort((a, b) => database[a].hotelName.localeCompare(database[b].hotelName))
+        .forEach(key => {
+            let opt = document.createElement("option");
+            opt.value = key;
+            opt.innerHTML = database[key].hotelName;
+            hotelSelect.appendChild(opt);
+        });
+
+    function handleHotelChange() {
+        tripSelect.innerHTML = '<option value="" disabled selected>-- Wybierz z listy --</option>';
+        
+        for (let tripKey in BazaWycieczek) {
+            let option = document.createElement("option");
+            option.value = tripKey;
+            option.innerHTML = BazaWycieczek[tripKey].label;
+            tripSelect.appendChild(option);
+        }
+        tripSelect.disabled = false;
+    }
+
+    function generateRoute() {
+        const hKey = hotelSelect.value;
+        const tKey = tripSelect.value;
+
+        if (!hKey || !tKey) {
+            alert("Proszę wybrać hotel oraz wycieczkę.");
+            return;
+        }
+
+        const hotelData = database[hKey];
+        const tripData = BazaWycieczek[tKey];
+        const origin = hotelData.hotelCoords;
+
+        const mapBox = document.getElementById("mapBox");
+        const gLink = document.getElementById("googleMapsLink");
+        const stopTitle = document.getElementById("stopTitle");
+        const timeDisplay = document.getElementById("pickupTimeDisplay");
+        const resultArea = document.getElementById("resultArea");
+        const screenTip = document.getElementById("screenTip");
+
+        if (!origin) {
+            stopTitle.innerText = "INFORMACJA";
+            timeDisplay.innerText = "";
+            mapBox.style.display = "block";
+            mapBox.innerHTML = `<div style="display:flex; align-items:center; justify-content:center; height:100%; color:#c20059; font-weight:bold; padding:20px; text-align:center; background:#fff;">Lokalizacja tego hotelu na ten moment niedostępna.</div>`;
+            gLink.style.display = "none";
+            screenTip.style.display = "none";
+            resultArea.style.display = "block";
+            return;
+        }
+
+        if (tripData.kierunek === "RECEPCJA") {
+            stopTitle.innerText = "ZBIÓRKA PRZED RECEPCJĄ";
+            timeDisplay.innerText = `GODZINA: ${tripData.godzina}`;
+            mapBox.style.display = "none";
+            gLink.style.display = "none";
+            screenTip.style.display = "block";
+            resultArea.style.display = "block";
+            return;
+        }
+
+        const wybranyPrzystanek = BazaPrzystankow[hotelData.przystanek];
+        let destination = "";
+        let stopLabelToShow = "";
+        
+        if (tripData.kierunek === "POLUDNIE") {
+            destination = wybranyPrzystanek.poludnie;
+            stopLabelToShow = wybranyPrzystanek.nazwaPoludnie || wybranyPrzystanek.nazwa;
+        } else if (tripData.kierunek === "POLNOC") {
+            destination = wybranyPrzystanek.polnoc;
+            stopLabelToShow = wybranyPrzystanek.nazwaPolnoc || wybranyPrzystanek.nazwa;
+        }
+
+        if (!destination) {
+            stopTitle.innerText = "INFORMACJA";
+            timeDisplay.innerText = "";
+            mapBox.style.display = "block";
+            mapBox.innerHTML = `<div style="display:flex; align-items:center; justify-content:center; height:100%; color:#c20059; font-weight:bold; padding:20px; text-align:center; background:#fff;">Trasa do tego przystanku jest w trakcie aktualizacji.</div>`;
+            gLink.style.display = "none";
+            screenTip.style.display = "none";
+            resultArea.style.display = "block";
+            return;
+        }
+
+        mapBox.style.display = "block";
+        gLink.style.display = "flex";
+        screenTip.style.display = "block";
+
+        stopTitle.innerText = `PRZYSTANEK: ${stopLabelToShow.toUpperCase()}`;
+        timeDisplay.innerText = `GODZINA ZBIÓRKI: ${tripData.godzina}`;
+
+        const embedUrl = `https://maps.google.com/maps?q=${destination}&saddr=${origin}&daddr=${destination}&directionsmode=walking&layer=c&output=embed`;
+        mapBox.innerHTML = `<iframe src="${embedUrl}"></iframe>`;
+
+        const universalUrl = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=walking`;
+        gLink.href = universalUrl;
+        
+        resultArea.style.display = "block";
+        resultArea.scrollIntoView({ behavior: 'smooth' });
+    }
+</script>
+
+</body>
+</html>
